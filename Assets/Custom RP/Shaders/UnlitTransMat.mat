@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: OpaqueLit
-  m_Shader: {fileID: 4800000, guid: deea2d6d64f5f5e468e1fda7c2fc8079, type: 3}
+  m_Name: UnlitTransMat
+  m_Shader: {fileID: 4800000, guid: f15b5600a8becae44a31bc5be40be1e2, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -30,10 +30,10 @@ Material:
     m_Ints: []
     m_Floats:
     - _Clipping: 0
-    - _Cutoff: 0.5
-    - _DstBlend: 0
-    - _SrcBlend: 1
-    - _ZWrite: 1
+    - _Cutoff: 0
+    - _DstBlend: 6
+    - _SrcBlend: 5
+    - _ZWrite: 0
     m_Colors:
-    - _BaseColor: {r: 1, g: 0.5707547, b: 0.5707547, a: 1}
+    - _BaseColor: {r: 0.5058824, g: 0.9850256, b: 1, a: 1}
   m_BuildTextureStacks: []
