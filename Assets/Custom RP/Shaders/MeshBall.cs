@@ -7,11 +7,16 @@ using Random = UnityEngine.Random;
 public class MeshBall : MonoBehaviour
 {
     private static int baseColorId = Shader.PropertyToID("_BaseColor");
+    private static int metallicId = Shader.PropertyToID("_Metallic");
+    private static int smoothnessId = Shader.PropertyToID("_Smoothness");
     [SerializeField] private Mesh mesh = default;
     [SerializeField] private Material material = default;
 
     private Matrix4x4[] matrices = new Matrix4x4[1023];
     private Vector4[] baseColors = new Vector4[1023];
+    float[]
+        metallic = new float[1023],
+        smoothness = new float[1023];
 
     private MaterialPropertyBlock block;
 
@@ -31,6 +36,8 @@ public class MeshBall : MonoBehaviour
                     Random.value, Random.value, Random.value, 
                     Random.Range(0.5f, 1f)
                 );
+            metallic[i] = Random.value < 0.25f ? 1f : 0f;
+            smoothness[i] = Random.Range(0.05f, 0.95f);
         }
     }
 
@@ -40,6 +47,8 @@ public class MeshBall : MonoBehaviour
         {
             block = new MaterialPropertyBlock();
             block.SetVectorArray(baseColorId, baseColors);
+            block.SetFloatArray(metallicId, metallic);
+            block.SetFloatArray(smoothnessId, smoothness);
         }
         Graphics.RenderMeshInstanced(
             new RenderParams(material)

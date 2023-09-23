@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Clipmat
-  m_Shader: {fileID: 4800000, guid: f15b5600a8becae44a31bc5be40be1e2, type: 3}
+  m_Name: OpaqueLit 1
+  m_Shader: {fileID: 4800000, guid: deea2d6d64f5f5e468e1fda7c2fc8079, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
@@ -31,10 +31,12 @@ Material:
     m_Ints: []
     m_Floats:
     - _Clipping: 1
-    - _Cutoff: 0.484
+    - _Cutoff: 0.308
     - _DstBlend: 0
+    - _Metallic: 0
+    - _Smoothness: 0.503
     - _SrcBlend: 1
     - _ZWrite: 1
     m_Colors:
-    - _BaseColor: {r: 1, g: 0.9856181, b: 0.48584908, a: 1}
+    - _BaseColor: {r: 1, g: 0.5707547, b: 0.5707547, a: 1}
   m_BuildTextureStacks: []

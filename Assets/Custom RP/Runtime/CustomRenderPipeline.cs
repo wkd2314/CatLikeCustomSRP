@@ -7,11 +7,14 @@ public class CustomRenderPipeline : RenderPipeline
 {
     private CameraRenderer _renderer = new CameraRenderer();
     bool useDynamicBatching, useGPUInstancing;
+    private ShadowSettings shadowSettings;
     
     public CustomRenderPipeline (
-        bool useDynamicBatching, bool useGPUInstancing, bool useSRPBatcher
+        bool useDynamicBatching, bool useGPUInstancing, bool useSRPBatcher, 
+        ShadowSettings shadowSettings
     )
     {
+        this.shadowSettings = shadowSettings;
         this.useDynamicBatching = useDynamicBatching;
         this.useGPUInstancing = useGPUInstancing;
         GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
@@ -29,7 +32,10 @@ public class CustomRenderPipeline : RenderPipeline
     {
         for (int i = 0; i < cameras.Count; i++)
         {
-            _renderer.Render(context, cameras[i], useDynamicBatching, useGPUInstancing);
+            _renderer.Render(
+                context, cameras[i], useDynamicBatching, useGPUInstancing,
+                shadowSettings
+            );
         }
     }
 }
