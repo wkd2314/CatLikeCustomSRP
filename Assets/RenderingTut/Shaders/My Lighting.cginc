@@ -1,4 +1,6 @@
-﻿// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
+﻿// Upgrade NOTE: replaced 'UNITY_PASS_TEXCUBE(unity_SpecCube1)' with 'UNITY_PASS_TEXCUBE_SAMPLER(unity_SpecCube1,unity_SpecCube0)'
+
+// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
 
 #if !defined(MY_LIGHTING_INCLUDED)
 #define MY_LIGHTING_INCLUDED
@@ -13,6 +15,7 @@ float4 _MainTex_ST, _DetailTex_ST;
 sampler2D _NormalMap, _DetailNormalMap;
 float _BumpScale, _DetailBumpScale;
 
+sampler2D _MetallicMap;
 float _Metallic;
 float _Smoothness;
 
@@ -25,6 +28,7 @@ struct VertexData {
 
 struct Interpolators {
 	float4 pos : SV_POSITION;
+	// uv.xy -> main , uv.wz -> detail
 	float4 uv : TEXCOORD0;
 	float3 normal : TEXCOORD1;
 
@@ -43,6 +47,15 @@ struct Interpolators {
 		float3 vertexLightColor : TEXCOORD6;
 	#endif
 };
+
+float GetMetallic (Interpolators i)
+{
+	#if defined(_METALLIC_MAP)
+	return tex2D(_MetallicMap, i.uv.xy).r * _Metallic;
+	#else
+	return _Metallic;
+	#endif
+}
 
 void ComputeVertexLightColor (inout Interpolators i) {
 	#if defined(VERTEXLIGHT_ON)
@@ -98,17 +111,30 @@ UnityLight CreateLight (Interpolators i) {
 	return light;
 }
 
-float3 BoxProjection (
-	float3 direction, float3 position,
-	float4 cubemapPosition, float3 boxMin, float3 boxMax
-) {
+float3 BoxProjection ( float3 direction, float3 position,
+	float4 cubemapPosition, float3 boxMin, float3 boxMax )
+{
+	// adjust bounds relative to surface position.
+	// boxMin -= position;
+	// boxMax -= position;
+	// float x = (direction.x > 0 ? boxMax.x : boxMin.x) / direction.x;
+	// float y = (direction.y > 0 ? boxMax.y : boxMin.y) / direction.y;
+	// float z = (direction.z > 0 ? boxMax.z : boxMin.z) / direction.z;
+
+	// w stores boxProjectionBool
+	#if UNITY_SPECCUBE_BOX_PROJECTION
 	UNITY_BRANCH
-	if (cubemapPosition.w > 0) {
-		float3 factors =
-			((direction > 0 ? boxMax : boxMin) - position) / direction;
+	if(cubemapPosition.w > 0)
+	{
+		float3 factors = ((direction > 0 ? boxMax : boxMin) - position) / direction;
+
+		// direction 방향으로 가장 가까이 있는 면까지의 거리
 		float scalar = min(min(factors.x, factors.y), factors.z);
-		direction = direction * scalar + (position - cubemapPosition);
+
+		// 삼각형.
+		direction = direction * scalar - (cubemapPosition - position);
 	}
+	#endif
 	return direction;
 }
 
@@ -118,27 +144,50 @@ UnityIndirect CreateIndirectLight (Interpolators i, float3 viewDir) {
 	indirectLight.specular = 0;
 
 	#if defined(VERTEXLIGHT_ON)
-		indirectLight.diffuse = i.vertexLightColor;
+	indirectLight.diffuse = i.vertexLightColor;
 	#endif
 
 	#if defined(FORWARD_BASE_PASS)
-		indirectLight.diffuse += max(0, ShadeSH9(float4(i.normal, 1)));
-		float3 reflectionDir = reflect(-viewDir, i.normal);
-		Unity_GlossyEnvironmentData envData;
-		envData.roughness = 1 - _Smoothness;
+	indirectLight.diffuse += max(0, ShadeSH9(float4(i.normal, 1)));
+	float3 reflectionDir = reflect(-viewDir, i.normal);
+	Unity_GlossyEnvironmentData envData;
+	envData.roughness = 1 - _Smoothness;
+	envData.reflUVW = BoxProjection(
+		reflectionDir, i.worldPos,
+		unity_SpecCube0_ProbePosition,
+		unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax
+	);
+	float3 probe0 = Unity_GlossyEnvironment(
+		UNITY_PASS_TEXCUBE(unity_SpecCube0), unity_SpecCube0_HDR, envData
+	);
+	float interpolator = unity_SpecCube0_BoxMin.w;
+	#if UNITY_SPECCUBE_BLENDING
+	UNITY_BRANCH
+	if(interpolator < 0.9999)
+	{
 		envData.reflUVW = BoxProjection(
-			reflectionDir, i.worldPos,
-			unity_SpecCube0_ProbePosition,
-			unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax
+		reflectionDir, i.worldPos,
+		unity_SpecCube1_ProbePosition,
+		unity_SpecCube1_BoxMin, unity_SpecCube1_BoxMax
 		);
-		indirectLight.specular = Unity_GlossyEnvironment(
-			UNITY_PASS_TEXCUBE(unity_SpecCube0), unity_SpecCube0_HDR, envData
+		float3 probe1 = Unity_GlossyEnvironment(
+			UNITY_PASS_TEXCUBE_SAMPLER(unity_SpecCube1,unity_SpecCube0), unity_SpecCube1_HDR, envData
 		);
+		indirectLight.specular = lerp(probe1, probe0, interpolator);
+	}
+	else
+	{
+		indirectLight.specular = probe0;
+	}
+	#else
+	indirectLight.specular = probe0;
+	#endif
+	
 	#endif
 
 	return indirectLight;
 }
-
+float2 _NormalMap_TexelSize;
 void InitializeFragmentNormal(inout Interpolators i) {
 	float3 mainNormal =
 		UnpackScaleNormal(tex2D(_NormalMap, i.uv.xy), _BumpScale);
@@ -170,7 +219,7 @@ float4 MyFragmentProgram (Interpolators i) : SV_TARGET {
 	float3 specularTint;
 	float oneMinusReflectivity;
 	albedo = DiffuseAndSpecularFromMetallic(
-		albedo, _Metallic, specularTint, oneMinusReflectivity
+		albedo, GetMetallic(i), specularTint, oneMinusReflectivity
 	);
 
 	return UNITY_BRDF_PBS(
